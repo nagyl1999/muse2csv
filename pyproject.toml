@@ -1,0 +1,17 @@
+[project]
+name = "muse2csv"
+version = "1.0.0"
+description = "Convert GE MUSE ECG XML exports to CSV format"
+authors = [{ name = "Levente Nagy" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.22",
+    "pandas>=1.4",
+    "xmltodict>=0.13.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/nagyl1999/muse2csv"
+Issues = "https://github.com/nagyl1999/muse2csv/issues"
