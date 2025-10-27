@@ -16,6 +16,7 @@ from typing import Dict, Any, Optional, List
 
 import xmltodict
 import numpy as np
+import pandas as pd
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,12 @@ LEAD_NAMES: List[str] = [
     'I', 'II', 'III', 'aVR', 'aVL', 'aVF',
     'V1', 'V2', 'V3', 'V4', 'V5', 'V6'
 ]
+
+QRS_TYPE_MAP = {
+    "0": "N",   # Normal
+    "1": "V",   # Ventricular
+    "2": "S",   # Supraventricular
+}
 
 UNIT_SCALE_MAP = {
     "MICROVOLTS": 0.001,  # µV → mV
@@ -107,16 +114,66 @@ def process_waveforms(waveform: Dict[str, Any]) -> Dict[str, np.ndarray]:
     return lead_waveforms
 
 
-def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_record", qrs_data: Optional[List] = None, fs: int = 500) -> None:
+def create_notations(qrs_data: Optional[List] = None, sample_size: int = 5000) -> List[str]:
     """
-    Save the processed ECG signals into CSV format (.hea and .dat files).
+    Creates a list representing the QRS annotations for the ECG CSV.
 
     Args:
-        lead_waveforms: The processed waveforms of the MUSE export.
-        output_name: The base name for the output CSV files.
-        fs: Sampling frequency in Hz (default: 500).
+        qrs_data: Optional list of QRS complex annotations.
+        sample_size: The number of samples in the ECG export.
+
+    Returns:
+        A list of strings of characters annotating the complexes.
     """
-    pass
+    # Initialize annotations
+    qrs_column = ['.'] * sample_size
+
+    # Return in case there are no annotations available
+    if qrs_data is None:
+        return qrs_column
+    
+    # Insert notations
+    for item in qrs_data:
+        index = int(item['Time'])
+        qrs_column[index] = QRS_TYPE_MAP.get(item['Type'], '?')
+
+    return qrs_column
+
+
+def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_record", qrs_data: Optional[List] = None, fs: int = 500) -> None:
+    """
+    Convert raw ECG signals and QRS notations into a CSV file for clinical use.
+
+    Args:
+        lead_waveforms: Dictionary of processed ECG waveforms.
+        output_name: The base name for the output CSV file.
+        qrs_data: Optional list of QRS complex annotations.
+        fs: Sampling frequency in Hz.
+    """
+    logger.info("Saving CSV record '%s' at %s Hz", output_name, fs)
+    df = pd.DataFrame(lead_waveforms)
+
+    # Calculate time axis
+    num_samples = df.shape[0]
+    time_values = np.arange(num_samples) / fs
+
+    # Insert time column
+    df.insert(0, 'Time', time_values)
+
+    # Insert annotations
+    df.insert(13, 'QRS', create_notations(qrs_data, num_samples))
+
+    # Format floats to 3 decimal places
+    df[LEAD_NAMES] = df[LEAD_NAMES].apply(lambda x: x.map(lambda y: '%.3f' % y))
+
+    df.to_csv(
+        f'{output_name}.csv',
+        index=False,
+        sep=';',
+        encoding='utf-8'
+    )
+
+    logger.info("CSV file saved: %s.csv", output_name)
 
 
 def muse_to_csv(path: str, output_name: str = "csv_record") -> bool:
