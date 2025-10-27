@@ -57,7 +57,7 @@ def read_muse_file(path: str) -> Dict[str, Any]:
     logger.info("Reading MUSE file: %s", path)
     with open(path, "rb") as muse_file:
         return xmltodict.parse(muse_file.read().decode("utf-8"))
-    
+
 
 def select_waveform(ecg: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -98,7 +98,8 @@ def process_waveforms(waveform: Dict[str, Any]) -> Dict[str, np.ndarray]:
         if scale is None:
             raise ValueError(f"Unknown amplitude unit: {lead['LeadAmplitudeUnits']}")
 
-        lead_waveforms[lead_id] = samples * float(lead["LeadAmplitudeUnitsPerBit"]) * scale # convert to mV
+        # Convert to mV
+        lead_waveforms[lead_id] = samples * float(lead["LeadAmplitudeUnitsPerBit"]) * scale
         logger.debug("Processed lead %s: %s samples.", lead_id, len(samples))
 
     # Compute derived leads
@@ -131,7 +132,7 @@ def create_notations(qrs_data: Optional[List] = None, sample_size: int = 5000) -
     # Return in case there are no annotations available
     if qrs_data is None:
         return qrs_column
-    
+
     # Insert notations
     for item in qrs_data:
         index = int(item['Time'])
@@ -140,7 +141,8 @@ def create_notations(qrs_data: Optional[List] = None, sample_size: int = 5000) -
     return qrs_column
 
 
-def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_record", qrs_data: Optional[List] = None, fs: int = 500) -> None:
+def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_record",
+             qrs_data: Optional[List] = None, fs: int = 500) -> None:
     """
     Convert raw ECG signals and QRS notations into a CSV file for clinical use.
 
@@ -164,7 +166,7 @@ def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_reco
     df.insert(13, 'QRS', create_notations(qrs_data, num_samples))
 
     # Format floats to 3 decimal places
-    df[LEAD_NAMES] = df[LEAD_NAMES].apply(lambda x: x.map(lambda y: '%.3f' % y))
+    df[LEAD_NAMES] = df[LEAD_NAMES] = df[LEAD_NAMES].apply(lambda x: [f"{val:.3f}" for val in x])
 
     df.to_csv(
         f'{output_name}.csv',
