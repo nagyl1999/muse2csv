@@ -160,13 +160,13 @@ def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_reco
     time_values = np.arange(num_samples) / fs
 
     # Insert time column
-    df.insert(0, 'Time', time_values)
+    df.insert(0, 'Time', [f"{val*1000:.2f}" for val in time_values])
 
     # Insert annotations
     df.insert(13, 'QRS', create_notations(qrs_data, num_samples))
 
     # Format floats to 3 decimal places
-    df[LEAD_NAMES] = df[LEAD_NAMES] = df[LEAD_NAMES].apply(lambda x: [f"{val:.3f}" for val in x])
+    df[LEAD_NAMES] = df[LEAD_NAMES].apply(lambda x: [f"{val:.5f}" for val in x])
 
     df.to_csv(
         f'{output_name}.csv',
