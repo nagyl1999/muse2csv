@@ -7,7 +7,7 @@ wfdb_filename = "patient001_ecg"
 
 lead_names = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
 
-muse_to_csv(muse_export, wfdb_filename)
+muse_to_csv(muse_export, wfdb_filename, verify=True)
 
 df = pd.read_csv(f'{wfdb_filename}.csv', sep=';')
 

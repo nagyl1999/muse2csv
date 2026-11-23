@@ -18,6 +18,8 @@ import xmltodict
 import numpy as np
 import pandas as pd
 
+from muse2csv.validation import verify_waveforms, verify_csv_roundtrip
+
 
 logger = logging.getLogger(__name__)
 
@@ -160,25 +162,23 @@ def save_csv(lead_waveforms: Dict[str, np.ndarray], output_name: str = "csv_reco
     time_values = np.arange(num_samples) / fs
 
     # Insert time column
-    df.insert(0, 'Time', [f"{val*1000:.2f}" for val in time_values])
+    df.insert(0, 'Time', time_values * 1000)
 
     # Insert annotations
-    df.insert(13, 'QRS', create_notations(qrs_data, num_samples))
-
-    # Format floats to 3 decimal places
-    df[LEAD_NAMES] = df[LEAD_NAMES].apply(lambda x: [f"{val:.5f}" for val in x])
+    df['QRS'] = create_notations(qrs_data, num_samples)
 
     df.to_csv(
         f'{output_name}.csv',
         index=False,
         sep=';',
-        encoding='utf-8'
+        encoding='utf-8',
+        float_format='%.5f'
     )
 
     logger.info("CSV file saved: %s.csv", output_name)
 
 
-def muse_to_csv(path: str, output_name: str = "csv_record") -> bool:
+def muse_to_csv(path: str, output_name: str = "csv_record", verify: bool = False) -> bool:
     """
     Main function to convert a MUSE XML ECG file into CSV format.
 
@@ -198,9 +198,17 @@ def muse_to_csv(path: str, output_name: str = "csv_record") -> bool:
     frequency = int(waveform.get("SampleBase", 500))
     lead_waveforms = process_waveforms(waveform)
 
+    if verify:
+        verify_waveforms(waveform, lead_waveforms)
+
     # Get complexes
     qrs_info = ecg_data["RestingECG"].get("QRSTimesTypes", {}).get("QRS")
 
     # Save processed data in CSV format
     save_csv(lead_waveforms, output_name, qrs_info, frequency)
+
+    if verify:
+        csv_path = output_name if output_name.endswith(".csv") else f"{output_name}.csv"
+        verify_csv_roundtrip(csv_path, lead_waveforms, frequency)
+
     logger.info("MUSE XML to CSV conversion completed successfully.")
